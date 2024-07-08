@@ -2,6 +2,8 @@ package customercontroller
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,9 +15,11 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/gin-gonic/gin"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/xuri/excelize/v2"
+
+	redisconn "go-restapi-gin/redisconn"
 
 	"github.com/joho/godotenv"
 )
@@ -28,11 +32,40 @@ func init() {
 	}
 }
 
+func GenerateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func GenerateRandomString(s int) (string, error) {
+	b, err := GenerateRandomBytes(s)
+	return base64.URLEncoding.EncodeToString(b), err
+}
+
 func Index(c *gin.Context) {
 
 	var customers []models.Customer
 
 	models.DB.Find(&customers)
+
+	rdb, _ := redisconn.Connect()
+	urlsJson, _ := json.Marshal(customers)
+	token, _ := GenerateRandomString(32)
+
+	ttl := time.Duration(3) * time.Second
+
+	op1 := rdb.Set(context.Background(), token, urlsJson, ttl)
+	if err := op1.Err(); err != nil {
+		fmt.Printf("unable to SET data. error: %v", err)
+		return
+	}
+	op2 := rdb.Get(context.Background(), token)
+	fmt.Printf("data", op2)
 	c.JSON(http.StatusOK, gin.H{"customers": customers})
 
 }
@@ -52,6 +85,20 @@ func Show(c *gin.Context) {
 			return
 		}
 	}
+
+	rdb, _ := redisconn.Connect()
+	urlsJson, _ := json.Marshal(customer)
+	token, _ := GenerateRandomString(32)
+
+	ttl := time.Duration(3) * time.Second
+
+	op1 := rdb.Set(context.Background(), token, urlsJson, ttl)
+	if err := op1.Err(); err != nil {
+		fmt.Printf("unable to SET data. error: %v", err)
+		return
+	}
+	op2 := rdb.Get(context.Background(), token)
+	fmt.Printf("data", op2)
 
 	c.JSON(http.StatusOK, gin.H{"customer": customer})
 }
@@ -87,6 +134,82 @@ func ExcelCustomers(c *gin.Context) {
 	}
 }
 
+func EmailCustomersMessage(customer models.Customer) string {
+	conn, err := amqp.Dial(os.Getenv("rabbit_url"))
+	msg := failOnError(err, "Failed to connect to RabbitMQ")
+	if msg == "Error" {
+		return "Error"
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	failOnError(err, "Failed to open a channel")
+	defer ch.Close()
+
+	q, err := ch.QueueDeclare(
+		"sendEmailToCustomers", // name
+		false,                  // durable
+		false,                  // delete when unused
+		false,                  // exclusive
+		false,                  // no-wait
+		nil,                    // arguments
+	)
+	msg = failOnError(err, "Failed to declare a queue")
+	if msg == "Error" {
+		return "Error"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	body := "send data"
+
+	dataSend, err := json.Marshal(&customer)
+	err = ch.PublishWithContext(ctx,
+		"",     // exchange
+		q.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(dataSend),
+		})
+	msg = failOnError(err, "Failed to publish a message")
+	if msg == "Error" {
+		return "Error"
+	}
+	log.Printf(" [x] Sent %s\n", body)
+
+	return "success"
+
+}
+
+func ReadExcelKonsumens(c *gin.Context) {
+
+	xlsx, err := excelize.OpenFile("static/excel/" + c.Param("filename") + ".xlsx")
+	if err != nil {
+		log.Fatal("ERROR", err.Error())
+	}
+
+	rowsExcel, _ := xlsx.GetRows("Sheet1")
+
+	rows := make([]models.Customer, 0)
+	for i, rowsExcel := range rowsExcel {
+		if i == 0 {
+			// Skip header row
+			continue
+		}
+		rowEmail := rowsExcel[0]
+		rowName := rowsExcel[1]
+		rowPasword := rowsExcel[2]
+
+		CreateCustomersMessage(models.Customer{Email: rowEmail, Name: rowName, Password: rowPasword})
+		EmailCustomersMessage(models.Customer{Email: rowEmail, Name: rowName, Password: rowPasword})
+	}
+
+	fmt.Printf("%v \n", rows)
+
+}
+
 func Create(c *gin.Context) {
 
 	var customer models.Customer
@@ -101,8 +224,9 @@ func Create(c *gin.Context) {
 	// models.DB.Create(&customer)
 
 	retData := CreateCustomersMessage(customer)
+	retDataEmail := EmailCustomersMessage(customer)
 
-	if retData == "success" {
+	if retData == "success" && retDataEmail == "success" {
 		c.JSON(http.StatusOK, gin.H{"customer": customer})
 	} else {
 		c.JSON(http.StatusInternalServerError, "Error Save Data")

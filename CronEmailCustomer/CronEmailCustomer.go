@@ -61,7 +61,7 @@ func GetData() {
 func Email(Name string, Email string) {
 
 	if Name == "" {
-		Name = "Konsumen"
+		Name = "Customer"
 	}
 
 	errEnv := godotenv.Load("../app.env")
