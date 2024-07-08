@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"go-restapi-gin/models"
+	"os"
 
 	"fmt"
 	pusher "go-restapi-gin/pusherconn"
@@ -13,10 +14,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
+
+	err := godotenv.Load("../app.env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
 	numberOfCores := runtime.NumCPU()
 	fmt.Println(numberOfCores)
@@ -53,7 +61,7 @@ func failOnError(err error, msg string) string {
 }
 
 func CreateCustomersMongoMessage(idKonsumen string) string {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	conn, err := amqp.Dial(os.Getenv("rabbit_url"))
 	msg := failOnError(err, "Failed to connect to RabbitMQ")
 	if msg == "Error" {
 		return "Error"
@@ -99,8 +107,7 @@ func CreateCustomersMongoMessage(idKonsumen string) string {
 }
 
 func GetData() {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-	FailOnError(err, "Failed to connect to RabbitMQ")
+	conn, err := amqp.Dial(os.Getenv("rabbit_url"))
 	defer conn.Close()
 
 	ch, err := conn.Channel()

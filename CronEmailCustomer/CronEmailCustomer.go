@@ -2,6 +2,7 @@ package main
 
 import (
 	"go-restapi-gin/models"
+	"os"
 
 	"fmt"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/joho/godotenv"
 	cron "github.com/robfig/cron/v3"
 )
 
@@ -59,17 +61,23 @@ func Email(Name string, Email string) {
 	if Name == "" {
 		Name = "Konsumen"
 	}
-	username := "217b4a405ee6bf"
-	password := "06a38497e6b5a3"
-	host := "sandbox.smtp.mailtrap.io"
-	port := "465"
+
+	errEnv := godotenv.Load("../app.env")
+	if errEnv != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	username := os.Getenv("SMTP_USER")
+	password := os.Getenv("SMTP_PASSWORD")
+	host := os.Getenv("SMTP_HOST")
+	port := os.Getenv("SMTP_PORT")
 
 	// Subject and body
 	subject := "Good Night, " + Name
 	body := "Hi, Good Night " + Name
 
 	// Sender and receiver
-	from := "michaeldenniseldima@gmail.com"
+	from := os.Getenv("SMTP_FROM")
 	to := []string{
 		Email,
 	}

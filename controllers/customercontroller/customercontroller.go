@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"go-restapi-gin/models"
@@ -15,7 +16,17 @@ import (
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/gin-gonic/gin"
 	amqp "github.com/rabbitmq/amqp091-go"
+
+	"github.com/joho/godotenv"
 )
+
+func init() {
+
+	err := godotenv.Load("app.env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+}
 
 func Index(c *gin.Context) {
 
@@ -108,7 +119,8 @@ func failOnError(err error, msg string) string {
 }
 
 func CreateCustomersMessage(customer models.Customer) string {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+
+	conn, err := amqp.Dial(os.Getenv("rabbit_url"))
 	msg := failOnError(err, "Failed to connect to RabbitMQ")
 	if msg == "Error" {
 		return "Error"

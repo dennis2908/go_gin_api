@@ -3,7 +3,10 @@ package mongoconn
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -17,7 +20,12 @@ var (
 func Connect() (*mongo.Database, error) {
 	ctx := context.TODO()
 
-	dbUri := "mongodb://localhost:27017"
+	err := godotenv.Load("../app.env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	dbUri := os.Getenv("mongo_url")
 	connectionOpts := options.Client().ApplyURI(dbUri)
 	mongoClient, err := mongo.Connect(ctx, connectionOpts)
 	if err != nil {
@@ -30,5 +38,5 @@ func Connect() (*mongo.Database, error) {
 		panic(err)
 	}
 
-	return mongoClient.Database("kreditPlus"), nil
+	return mongoClient.Database("logDB"), nil
 }

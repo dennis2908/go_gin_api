@@ -1,6 +1,10 @@
 package pusherconn
 
 import (
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
 	pusher "github.com/pusher/pusher-http-go/v5"
 )
 
@@ -9,15 +13,19 @@ var (
 )
 
 func Connect() (pusher.Client, error) {
+	err := godotenv.Load("../app.env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	pusherClient := pusher.Client{
 
-		AppID: "705473",
+		AppID: os.Getenv("pusher_appId"),
 
-		Key: "b9e4d6190581d989a6e2",
+		Key: os.Getenv("pusher_key"),
 
-		Secret: "629f95f4aa4563d80845",
+		Secret: os.Getenv("pusher_secret"),
 
-		Cluster: "ap1",
+		Cluster: os.Getenv("pusher_cluster"),
 
 		Secure: true,
 	}
