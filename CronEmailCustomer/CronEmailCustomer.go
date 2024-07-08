@@ -51,8 +51,10 @@ func GetData() {
 	scheduler.Start()
 
 	// set task yang akan dijalankan scheduler
+	// gunakan crontab string untuk notifikasi harian tiap 1 menit ke email masing masing konsumen
+	// scheduler.AddFunc("*/1 * * * *", NotifyDailyNightNotif)
 	// gunakan crontab string untuk notifikasi harian tiap jam 9 malam ke email masing masing konsumen
-	scheduler.AddFunc("*/1 * * * *", NotifyDailyNightNotif)
+	scheduler.AddFunc("0 21 * * 1-7", NotifyDailyNightNotif)
 	time.Sleep(1 * time.Minute)
 }
 
