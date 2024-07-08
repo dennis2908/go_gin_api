@@ -1,5 +1,5 @@
-Instalation :
--> Change postgres environment at app.env
+Instalation : </br>
+-> Change postgres environment at app.env </br>
 -> Install all depedencies and then on root terminal :
 
 ```
