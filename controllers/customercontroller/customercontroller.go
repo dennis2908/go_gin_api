@@ -1,10 +1,12 @@
 package customercontroller
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"go-restapi-gin/models"
 
@@ -12,6 +14,7 @@ import (
 
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/gin-gonic/gin"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func Index(c *gin.Context) {
@@ -42,7 +45,7 @@ func Show(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"customer": customer})
 }
 
-func ExcelKonsumens(c *gin.Context) {
+func ExcelCustomers(c *gin.Context) {
 
 	var customers []models.Customer
 
@@ -82,8 +85,78 @@ func Create(c *gin.Context) {
 		return
 	}
 
-	models.DB.Create(&customer)
-	c.JSON(http.StatusOK, gin.H{"customer": customer})
+	fmt.Println(2222, &customer)
+
+	// models.DB.Create(&customer)
+
+	retData := CreateCustomersMessage(customer)
+
+	if retData == "success" {
+		c.JSON(http.StatusOK, gin.H{"customer": customer})
+	} else {
+		c.JSON(http.StatusInternalServerError, "Error Save Data")
+	}
+
+}
+
+func failOnError(err error, msg string) string {
+	if err != nil {
+		return "Error"
+	} else {
+		return ""
+	}
+}
+
+func CreateCustomersMessage(customer models.Customer) string {
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	msg := failOnError(err, "Failed to connect to RabbitMQ")
+	if msg == "Error" {
+		return "Error"
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	failOnError(err, "Failed to open a channel")
+	defer ch.Close()
+
+	q, err := ch.QueueDeclare(
+		"createCustomers", // name
+		false,             // durable
+		false,             // delete when unused
+		false,             // exclusive
+		false,             // no-wait
+		nil,               // arguments
+	)
+	msg = failOnError(err, "Failed to declare a queue")
+	if msg == "Error" {
+		return "Error"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	body := "send data"
+
+	fmt.Println(1111, &customer)
+
+	dataSend, err := json.Marshal(&customer)
+
+	err = ch.PublishWithContext(ctx,
+		"",     // exchange
+		q.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(dataSend),
+		})
+	msg = failOnError(err, "Failed to publish a message")
+	if msg == "Error" {
+		return "Error"
+	}
+	log.Printf(" [x] Sent %s\n", body)
+
+	return "success"
+
 }
 
 func Update(c *gin.Context) {

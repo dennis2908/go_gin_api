@@ -37,7 +37,7 @@ func main() {
 
 		r.GET("/api/customers", customercontroller.Index)
 		r.GET("/api/customers/:id", customercontroller.Show)
-		r.GET("/api/customers/export-excel/:filename", customercontroller.ExcelKonsumens)
+		r.GET("/api/customers/export-excel/:filename", customercontroller.ExcelCustomers)
 		r.POST("/api/customers", customercontroller.Create)
 		r.PUT("/api/customers/:id", customercontroller.Update)
 		r.DELETE("/api/customers", customercontroller.Delete)
