@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
-	"go-restapi-gin/models"
+	loadEnv "go-restapi-gin/LoadEnv"
 	"go-restapi-gin/routers"
-	"log"
 	"runtime"
 	"sync"
 
@@ -20,12 +19,8 @@ func main() {
 	for i := 0; i < numberOfCores; i++ {
 		wg.Add(1)
 
-		config, err := models.LoadConfig(".")
-		if err != nil {
-			log.Fatal("? Could not load environment variables", err)
-		}
+		loadEnv.Connects()
 		r := gin.Default()
-		models.ConnectDB(&config)
 
 		routers.Router(r)
 

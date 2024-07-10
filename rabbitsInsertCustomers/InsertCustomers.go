@@ -3,14 +3,16 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"go-restapi-gin/celery"
 	"go-restapi-gin/models"
 	"os"
+	"strconv"
 
 	"fmt"
 	pusher "go-restapi-gin/pusherconn"
+
 	"log"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
@@ -106,6 +108,25 @@ func CreateCustomersMongoMessage(idKonsumen string) string {
 
 }
 
+func saveData(data []byte) string {
+	var customers []models.Customer
+
+	models.DB.Find(&customers)
+
+	ul := &models.Customer{}
+	json.Unmarshal(data, ul)
+	Qry := models.Customer{Email: ul.Email, Name: ul.Name, Password: ul.Password}
+	models.DB.Create(&Qry)
+
+	fmt.Println(Qry.Id)
+
+	idStr := strconv.Itoa(int(Qry.Id))
+
+	CreateCustomersMongoMessage(idStr)
+
+	return "success"
+}
+
 func GetData() {
 	conn, err := amqp.Dial(os.Getenv("rabbit_url"))
 	defer conn.Close()
@@ -140,20 +161,19 @@ func GetData() {
 	go func() {
 
 		for d := range msgs {
-			var customers []models.Customer
+			cli, _ := celery.Connect()
 
-			models.DB.Find(&customers)
+			saveData := saveData(d.Body)
+			cli.Register("save.data.customers", saveData)
 
-			ul := &models.Customer{}
-			json.Unmarshal(d.Body, ul)
-			Qry := models.Customer{Email: ul.Email, Name: ul.Name, Password: ul.Password}
-			models.DB.Create(&Qry)
+			// start workers (non-blocking call)
+			cli.StartWorker()
 
-			fmt.Println(Qry.Id)
+			// wait for client request
+			time.Sleep(4 * time.Second)
 
-			idStr := strconv.Itoa(int(Qry.Id))
-
-			CreateCustomersMongoMessage(idStr)
+			// stop workers gracefully (blocking call)
+			cli.StopWorker()
 
 			client, _ := pusher.Connect()
 
