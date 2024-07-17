@@ -13,7 +13,11 @@ import (
 
 	"go-restapi-gin/models"
 
+	"go-restapi-gin/token"
+
 	"gorm.io/gorm"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/gin-gonic/gin"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -23,6 +27,11 @@ import (
 
 	"github.com/joho/godotenv"
 )
+
+type LoginInput struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
 
 func init() {
 
@@ -45,6 +54,65 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 func GenerateRandomString(s int) (string, error) {
 	b, err := GenerateRandomBytes(s)
 	return base64.URLEncoding.EncodeToString(b), err
+}
+
+func Login(c *gin.Context) {
+
+	var input LoginInput
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	u := models.Customer{}
+
+	u.UserName = input.Username
+	u.Password = input.Password
+
+	token, err := LoginCheck(u.UserName, u.Password)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username or password is incorrect."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": token})
+
+}
+
+func LoginCheck(username string, password string) (string, error) {
+
+	var err error
+
+	u := models.Customer{}
+
+	err = models.DB.Where("user_name = ?", username).Take(&u).Error
+
+	if err != nil {
+		return "", err
+	}
+
+	err = VerifyPassword(password, u.Password)
+
+	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
+		return "", err
+	}
+
+	token, err := token.GenerateToken(uint(u.Id))
+
+	println(token)
+
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+
+}
+
+func VerifyPassword(password, hashedPassword string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
 func Index(c *gin.Context) {

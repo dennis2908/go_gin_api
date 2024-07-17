@@ -2,16 +2,19 @@ package routers
 
 import (
 	"go-restapi-gin/controllers/ordercontroller"
+	"go-restapi-gin/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
 
 func RouterOrder(r *gin.Engine) {
 
-	r.GET("/api/orders", ordercontroller.Index)
-	r.GET("/api/orders/:id", ordercontroller.Show)
-	r.POST("/api/orders", ordercontroller.Create)
-	r.PUT("/api/orders/:id", ordercontroller.Update)
-	r.DELETE("/api/orders", ordercontroller.Delete)
+	protected := r.Group("")
+	protected.Use(middlewares.JwtAuthMiddleware())
+	protected.GET("/api/orders", ordercontroller.Index)
+	protected.GET("/api/orders/:id", ordercontroller.Show)
+	protected.POST("/api/orders", ordercontroller.Create)
+	protected.PUT("/api/orders/:id", ordercontroller.Update)
+	protected.DELETE("/api/orders", ordercontroller.Delete)
 
 }

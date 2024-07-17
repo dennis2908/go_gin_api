@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	loadEnv "go-restapi-gin/LoadEnv"
+	"go-restapi-gin/middlewares"
 	"go-restapi-gin/routers"
 	"runtime"
 	"sync"
@@ -23,6 +24,9 @@ func main() {
 		r := gin.Default()
 
 		routers.Router(r)
+
+		protected := r.Group("/api/orders")
+		protected.Use(middlewares.JwtAuthMiddleware())
 
 		r.Run()
 	}

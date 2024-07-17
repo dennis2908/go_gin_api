@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"go-restapi-gin/celery"
 	"go-restapi-gin/models"
+
+	"golang.org/x/crypto/bcrypt"
+
 	"os"
 	"strconv"
 
@@ -115,7 +118,16 @@ func saveData(data []byte) string {
 
 	ul := &models.Customer{}
 	json.Unmarshal(data, ul)
-	Qry := models.Customer{Email: ul.Email, Name: ul.Name, Password: ul.Password}
+
+	//turn password into hash
+	hashedPassword, errx := bcrypt.GenerateFromPassword([]byte(ul.Password), bcrypt.DefaultCost)
+	if errx != nil {
+		return "error"
+	}
+	ul.Password = string(hashedPassword)
+
+	Qry := models.Customer{Email: ul.Email, Name: ul.Name, Password: ul.Password, UserName: ul.UserName}
+
 	models.DB.Create(&Qry)
 
 	fmt.Println(Qry.Id)
