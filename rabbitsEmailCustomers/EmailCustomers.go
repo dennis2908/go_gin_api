@@ -12,16 +12,16 @@ import (
 
 	"go-restapi-gin/models"
 
-	loadEnv "go-restapi-gin/LoadEnv"
-
+	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func init() {
-	loadEnv.Connects()
-}
-
 func main() {
+
+	err := godotenv.Load("../app.env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
 	numberOfCores := runtime.NumCPU()
 	fmt.Println(numberOfCores)

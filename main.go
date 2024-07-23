@@ -25,7 +25,7 @@ func main() {
 
 		routers.Router(r)
 
-		protected := r.Group("/api/orders")
+		protected := r.Group("")
 		protected.Use(middlewares.JwtAuthMiddleware())
 
 		r.Run()
