@@ -1,8 +1,9 @@
 package routers
 
 import (
-	"go-restapi-gin/controllers/customercontroller"
 	"go-restapi-gin/middlewares"
+
+	"go-restapi-gin/controllers/customercontroller"
 
 	"github.com/gin-gonic/gin"
 )

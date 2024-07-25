@@ -13,6 +13,8 @@ import (
 
 	"go-restapi-gin/models"
 
+	"go-restapi-gin/services"
+
 	"go-restapi-gin/token"
 
 	"gorm.io/gorm"
@@ -27,6 +29,10 @@ import (
 
 	"github.com/joho/godotenv"
 )
+
+type Customercontroller interface {
+	ExcelCustomers()
+}
 
 type LoginInput struct {
 	Username string `json:"username" binding:"required"`
@@ -172,34 +178,7 @@ func Show(c *gin.Context) {
 }
 
 func ExcelCustomers(c *gin.Context) {
-
-	var customers []models.Customer
-
-	models.DB.Find(&customers)
-	xlsx := excelize.NewFile()
-	sheetName := "Sheet1"
-
-	xlsx.SetSheetName("Sheet1", sheetName)
-
-	// Add headers
-	xlsx.SetCellValue(sheetName, "A1", "Email")
-	xlsx.SetCellValue(sheetName, "B1", "Name")
-	xlsx.SetCellValue(sheetName, "C1", "Password")
-	// Create a new sheet.
-	rowIndex := 2
-	for _, data := range customers {
-		xlsx.SetCellValue(sheetName, fmt.Sprintf("A%d", rowIndex), data.Email)
-		xlsx.SetCellValue(sheetName, fmt.Sprintf("B%d", rowIndex), data.Name)
-		xlsx.SetCellValue(sheetName, fmt.Sprintf("C%d", rowIndex), data.Password)
-
-		rowIndex++
-	}
-
-	filename := "static/excel/" + c.Param("filename") + ".xlsx"
-
-	if err := xlsx.SaveAs(filename); err != nil {
-		log.Fatal(err)
-	}
+	services.ExcelCustomers(c)
 }
 
 func EmailCustomersMessage(customer models.Customer) string {
