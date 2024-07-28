@@ -291,6 +291,7 @@ func failOnError(err error, msg string) string {
 
 func CreateCustomersMessage(customer models.Customer) string {
 
+	fmt.Println(1212, os.Getenv("rabbit_url"))
 	conn, err := amqp.Dial(os.Getenv("rabbit_url"))
 	msg := failOnError(err, "Failed to connect to RabbitMQ")
 	if msg == "Error" {

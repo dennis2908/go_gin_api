@@ -11,7 +11,7 @@ import (
 func RouterCustomer(r *gin.Engine) {
 	protected := r.Group("")
 	protected.Use(middlewares.JwtAuthMiddleware())
-	protected.GET("/api/customers", customercontroller.Index)
+	r.GET("/api/customers", customercontroller.Index)
 	protected.GET("/api/customers/:id", customercontroller.Show)
 	protected.GET("/api/customers/export-excel/:filename", customercontroller.ExcelCustomers)
 	protected.GET("/api/customers/import-excel/:filename", customercontroller.ReadExcelKonsumens)

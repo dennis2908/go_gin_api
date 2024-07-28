@@ -12,6 +12,7 @@ COPY . .
 
 RUN go build -o main .
 
-EXPOSE 8080
+EXPOSE 8081
 
-ENTRYPOINT ["go", "run", "main.go"]
+COPY cmd.sh cmd.sh
+ENTRYPOINT ./cmd.sh
