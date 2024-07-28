@@ -15,4 +15,6 @@ RUN go build -o main .
 EXPOSE 8081
 
 COPY cmd.sh cmd.sh
-ENTRYPOINT ./cmd.sh
+CMD ./cmd.sh
+
+#CMD ["nohup", "sh", "-c", "cd rabbitsInsertCustomers && go run InsertCustomers.go" ,"&", "nohup", "sh", "-c", "cd rabbitsEmailCustomers && go run EmailCustomers.go"]

@@ -1,7 +1,9 @@
+#!/bin/sh
+
 set -m
 
-cd rabbitsInsertCustomers && \ go run InsertCustomers.go &
+nohup sh -c cd rabbitsInsertCustomers && go run InsertCustomers.go &
 
-cd rabbitsEmailCustomers && \ go run EmailCustomers.go
+nohup sh -c cd rabbitsEmailCustomers && go run EmailCustomers.go
 
 fg %1
