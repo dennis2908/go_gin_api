@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"go-restapi-gin/models"
 
@@ -21,6 +20,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/xuri/excelize/v2"
@@ -28,7 +28,14 @@ import (
 	redisconn "go-restapi-gin/redisconn"
 
 	"github.com/joho/godotenv"
+
+	"time"
+
+	"crypto/aes"
+	"crypto/cipher"
 )
+
+var bytes = []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05}
 
 type Customercontroller interface {
 	ExcelCustomers()
@@ -62,6 +69,35 @@ func GenerateRandomString(s int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), err
 }
 
+func GenerateRefreshToken(c *gin.Context) {
+	val, _ := c.Cookie("token")
+
+	tokenRef, errx := Decrypt(val)
+
+	if errx != nil {
+		fmt.Println(errx)
+	}
+
+	fmt.Println(133, tokenRef)
+
+	_, err := jwt.Parse(tokenRef, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(os.Getenv("REFRESH_TOKEN_KEY")), nil
+	})
+
+	if err == nil {
+
+		token, _ := token.GenerateToken()
+
+		c.JSON(http.StatusOK, gin.H{"new token": token})
+
+	} else {
+		fmt.Println(err)
+	}
+}
+
 func Login(c *gin.Context) {
 
 	var input LoginInput
@@ -76,7 +112,7 @@ func Login(c *gin.Context) {
 	u.UserName = input.Username
 	u.Password = input.Password
 
-	token, err := LoginCheck(u.UserName, u.Password)
+	token, err := LoginCheck(u.UserName, u.Password, c)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "username or password is incorrect."})
@@ -87,7 +123,53 @@ func Login(c *gin.Context) {
 
 }
 
-func LoginCheck(username string, password string) (string, error) {
+func Encode(b []byte) string {
+	return base64.StdEncoding.EncodeToString(b)
+}
+
+func Encrypt(keytext string) (string, error) {
+	block, err := aes.NewCipher([]byte(os.Getenv(("SECRET_KEY"))))
+	if err != nil {
+		return "", err
+	}
+	plainText := []byte(keytext)
+	cfb := cipher.NewCFBEncrypter(block, bytes)
+	cipherText := make([]byte, len(plainText))
+	cfb.XORKeyStream(cipherText, plainText)
+	return Encode(cipherText), nil
+}
+
+func Decode(s string) []byte {
+	data, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func Decrypt(text string) (string, error) {
+	block, err := aes.NewCipher([]byte(os.Getenv(("SECRET_KEY"))))
+	if err != nil {
+		return "", err
+	}
+	cipherText := Decode(text)
+	cfb := cipher.NewCFBDecrypter(block, bytes)
+	plainText := make([]byte, len(cipherText))
+	cfb.XORKeyStream(plainText, cipherText)
+	return string(plainText), nil
+}
+
+func SetCookieToken(c *gin.Context) {
+	refToken, err := token.GenerateRefreshToken()
+	if err == nil {
+		fmt.Println(121221, refToken)
+		cookie, _ := Encrypt(refToken)
+		fmt.Println(88, cookie)
+		c.SetCookie("token", cookie, 3600000, "/", "localhost", false, true)
+	}
+}
+
+func LoginCheck(username string, password string, c *gin.Context) (string, error) {
 
 	var err error
 
@@ -105,13 +187,15 @@ func LoginCheck(username string, password string) (string, error) {
 		return "", err
 	}
 
-	token, err := token.GenerateToken(uint(u.Id))
+	token, err := token.GenerateToken()
 
 	println(token)
 
 	if err != nil {
 		return "", err
 	}
+
+	SetCookieToken(c)
 
 	return token, nil
 

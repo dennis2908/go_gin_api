@@ -17,6 +17,7 @@ func RouterCustomer(r *gin.Engine) {
 	protected.GET("/api/customers/import-excel/:filename", customercontroller.ReadExcelKonsumens)
 	r.POST("/api/customers", customercontroller.Create)
 	r.POST("/api/customers/login", customercontroller.Login)
+	r.POST("/api/customers/refresh/token", customercontroller.GenerateRefreshToken)
 	protected.PUT("/api/customers/:id", customercontroller.Update)
 	protected.DELETE("/api/customers", customercontroller.Delete)
 
