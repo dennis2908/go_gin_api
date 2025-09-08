@@ -1,0 +1,95 @@
+version: '3.9'
+
+services:
+  apigintask:
+    container_name: apigintask
+    image: apigintask/1.0
+    build: .
+    ports:
+      - "8080:8080"
+      - "3000:3000"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=dbapigintask;Database=postgres;Username=postgres;Password=postgres"
+    depends_on:
+      dbapigintask:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy  
+      redis:
+        condition: service_healthy  
+    x-develop:
+      watch:
+        - action: rebuild
+          path: .    
+
+  apigintaskRabbit:
+    container_name: apigintaskRabbit
+    image: apigintaskRabbit/1.0
+    build:
+      context: .
+      dockerfile: DockerfileRabbitInsert
+    ports:
+      - "8081:8081"
+      - "3001:3001"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=dbapigintask;Database=postgres;Username=postgres;Password=postgres"
+    depends_on:
+      dbapigintask:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy  
+      redis:
+        condition: service_healthy  
+    x-develop:
+      watch:
+        - action: rebuild
+          path: .         
+
+  redis:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes: 
+      - ./data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 1s
+      timeout: 3s
+      retries: 5  
+    command: ["redis-server"]   
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3  
+
+  dbapigintask:
+    container_name: dbapigintask
+    image: postgres:12
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdatadbapigintask:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5  
+
+volumes:
+  pgdatadbapigintask: {}
+  rabbitmq_data: {}

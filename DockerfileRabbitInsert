@@ -1,0 +1,20 @@
+FROM golang:1.22 as build
+
+WORKDIR /usr/local/go/src/go-restapi-gin
+
+COPY go.mod .
+
+COPY go.sum .
+
+RUN go mod download
+
+COPY . .
+
+RUN go build -o main .
+
+EXPOSE 8081
+
+COPY cmd.sh cmd.sh
+CMD ./cmd.sh
+
+#CMD ["nohup", "sh", "-c", "cd rabbitsInsertCustomers && go run InsertCustomers.go" ,"&", "nohup", "sh", "-c", "cd rabbitsEmailCustomers && go run EmailCustomers.go"]
